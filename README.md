@@ -1,5 +1,5 @@
 # ATM-Project
-Automated Teller Machine (ATM) Simulation using Python and SQLite
+Automated Teller Machine (ATM) Console Application using Python and SQLite
 
 Features:
 

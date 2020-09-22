@@ -1,6 +1,7 @@
 from random import choice   # to create a random Card Number
 import sqlite3              # to store customer informations
 import time
+import sys
 
 # create a database object
 conn = sqlite3.connect("customers.db")
@@ -13,10 +14,16 @@ conn.commit()
 
 print("\n", "-"*20, "Welcome to our ATM", "-"*20, "\n\n")
 
-# to convert a tuple to a string
+# This function provides to convert a tuple to a string
 def tupleToStr(tup): 
     string =  ''.join(tup) 
     return string
+
+# This function provides to exit the program
+def exitProgram():
+    print("Logging Out...")
+    time.sleep(1)
+    sys.exit(0)
 
 # ATM Main Menu
 def mainMenu(cardNumber):
@@ -49,10 +56,17 @@ def mainMenu(cardNumber):
         elif select == 5:
             transfer(cardNum)
         elif select == 6:
-            pass
+            exitProgram()
     else:
         print("Please enter an integer (1-6)")
         mainMenu(cardNumber)
+
+# This function provides to write amount of money.
+def amountOfMoney(cardNumber):
+    amountOfMoney = cursor.execute("SELECT money FROM customers WHERE cardNumber=?", (cardNumber,))
+    myIter = next(iter(amountOfMoney))
+    money = float('.'.join(str(myIt) for myIt in myIter))
+    print("\nAmount of current balance:", money)
 
 # This function shows customer informations
 def viewAccount(cardNumber):
@@ -70,38 +84,33 @@ def viewAccount(cardNumber):
 
 # This function provides to send money to other bank account.
 def transfer(cardNumber):
-    def amountOfMoney():
-        amountOfMoney = cursor.execute("SELECT money FROM customers WHERE cardNumber=?", (cardNumber,))
-        myIter = next(iter(amountOfMoney))
-        money = float('.'.join(str(myIt) for myIt in myIter))
-        print("\nAmount of current balance:", money)
-    amountOfMoney()
-    try:
-        transferCardNumber = int(input("\nEnter the card number of the account you will send money to: "))
+    amountOfMoney(cardNumber)
+    transferCardNumber = input("\nEnter the card number of the account you will send money to: ")
+    if transferCardNumber.isdigit() == True:
+        transferCardNumber = int(transferCardNumber)
         cursor.execute("SELECT * FROM customers WHERE cardNumber=?", (transferCardNumber,))
         if cursor.fetchone() is not None:
-            question = input("\nAre you sure you have entered the correct Card Number? (yes: y / no: n): ")
-            try:
-                if question == "y":                                                            
-                    try:
-                        transferMoney = float(input("\nEnter an amount of money to send: "))
-                        cursor.execute("UPDATE customers SET money = money + (?) WHERE cardNumber = ?", (transferMoney, transferCardNumber))
-                        cursor.execute("UPDATE customers SET money = money - (?) WHERE cardNumber = ?", (transferMoney, cardNumber))
-                        conn.commit()
-                        print("\nTransaction Successful!")
-                        time.sleep(2)
-                        mainMenu(cardNumber)
-                    except:
-                        print("Invalid money. Please enter Integer or Decimal numbers!")
-                elif question == "n":
+            question = input("\nAre you sure you have entered the correct Card Number? (yes: y / no: n): ").lower()
+            if question == "y":
+                transferMoney = input("\nEnter an amount of money to send: ")
+                if transferMoney.isdigit() or transferMoney.isdecimal() == True:                 
+                    cursor.execute("UPDATE customers SET money = money + (?) WHERE cardNumber = ?", (transferMoney, transferCardNumber))
+                    cursor.execute("UPDATE customers SET money = money - (?) WHERE cardNumber = ?", (transferMoney, cardNumber))
+                    conn.commit()
+                    print("\nTransaction Successful!\n")
+                    mainMenu(cardNumber)
+                else:
+                    print("Please enter INTEGER or DECIMAL numbers")
                     transfer(cardNumber)
-            except:
-                print("Invalid answer. Please Try Again.")
+            elif question == "n":
+                transfer(cardNumber)
+            else:
+                print("Invalid Answer. Try Again.")
                 transfer(cardNumber)
         else:
             print("Invalid Card Number, Please Try Again.")
             transfer(cardNumber)
-    except:
+    else:
         print("WRONG Card Number. Please enter the INTEGER Card Number!")
         transfer(cardNumber)
 
@@ -114,52 +123,45 @@ def changePin(cardNumber):
         print("Your new pin:", newPin)
         print("#############################\n")
         conn.commit()
-        mainMenu(cardNumber)
     except:
         print("\nPlease enter integer PIN\n")
         changePin(cardNumber)
+    else:
+        mainMenu(cardNumber)
 
 # This function provides to deposit your cash
 def deposit(cardNumber):
-    def amountOfMoney():
-        amountOfMoney = cursor.execute("SELECT money FROM customers WHERE cardNumber=?", (cardNumber,))
-        myIter = next(iter(amountOfMoney))
-        money = float('.'.join(str(myIt) for myIt in myIter))
-        print("\nAmount of current balance:", money)
-    amountOfMoney()
+    amountOfMoney(cardNumber)
     try:
         addMoney = float(input("\nHow much money do you want to deposit into your account?: "))
         print("\nThe money is deposited into your account...\n")
         time.sleep(2)
         
         cursor.execute("UPDATE customers SET money = money + (?) WHERE cardNumber=?", (addMoney, cardNumber))
-        amountOfMoney()
         conn.commit()
-        mainMenu(cardNumber)
+        amountOfMoney(cardNumber)
     except:
         print("\nInvalid Value. Please Try Again.")
         deposit(cardNumber)
+    else:
+        mainMenu(cardNumber)
 
 # This function provides to withdraw from your account
 def withdraw(cardNumber):
-    def amountOfMoney():
-        amountOfMoney = cursor.execute("SELECT money FROM customers WHERE cardNumber=?", (cardNumber,))
-        myIter = next(iter(amountOfMoney))
-        money = float('.'.join(str(myIt) for myIt in myIter))
-        print("\nAmount of current balance:", money)
-    amountOfMoney()
+    amountOfMoney(cardNumber)
     try:
         addMoney = float(input("\nHow much money do you want to withdraw from your account?: "))
         print("\nThe money is being drawn ...\n")
         time.sleep(2)
 
         cursor.execute("UPDATE customers SET money = money - (?) WHERE cardNumber=?", (addMoney, cardNumber))
-        amountOfMoney()
+        amountOfMoney(cardNumber)
         conn.commit()
-        mainMenu(cardNumber)
     except:
         print("\nInvalid Value. Please Try Again.")
         deposit(cardNumber)
+    else:
+        mainMenu(cardNumber)
 
 # This function creates an account for customer
 def signUp():
@@ -181,10 +183,11 @@ def signUp():
         infoCustomer = tuple(cursor.execute("SELECT * FROM customers WHERE cardNumber=?", (cardNumber,)))
         print("\nRegistration Successful!\n")
         viewAccount(infoCustomer[0][0])
-        mainMenu(cardNumber)
     except:
         print("Invalid Value. Please Try Again.")
         signUp()
+    else:
+        mainMenu(cardNumber)
 
 # This function provides to sign in to your account. 
 def signIn():
@@ -200,22 +203,25 @@ def signIn():
         print("\nWRONG Card Number or PIN, Please Try Again.\n")
         signIn()
 
-# first screen
 while True:
     print('''
     ###################################################
     #                                                 #
     #  Sign In (enter 'i')        Sign Up (enter 'u') # 
     #                                                 #
+    #                 Exit (enter 'e')                #
+    #                                                 #
     ###################################################
     '''.lower())
-    
-    question = input("Select: ")
+        
+    question = input("Select: ").lower()
     if question == "i":
         signIn()
         break
     elif question == "u":
         signUp()
         break
+    elif question == 'e':
+        exitProgram()
     else:
         print("Invalid Keyword, Please Try Again.")
